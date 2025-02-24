@@ -1,4 +1,5 @@
 import numpy as np
+import time
 from multiprocessing import Pool
 
 def multiplicar_bloque_matriz(args):
@@ -6,35 +7,42 @@ def multiplicar_bloque_matriz(args):
     resultado_bloque = np.dot(bloque_A, B)
     return (fila_inicio, resultado_bloque)
 
-def multiplicacion_matriz_paralela(A, B):
-    
-    #Partición: Dividimos la matriz A en bloques para paralelizar el trabajo
-    num_bloques = 4 
+def multiplicacion_matriz_paralela(A, B, num_bloques=4):
     tam_bloque = A.shape[0] // num_bloques  
     
-    #Mapeo: Creamos un Pool de procesos para distribuir las tareas entre los núcleos
     pool = Pool(processes=num_bloques)
     
-    #Preparamos las tareas para cada bloque de la matriz A
     tareas = [(A[i*tam_bloque:(i+1)*tam_bloque, :], B, i*tam_bloque, tam_bloque) for i in range(num_bloques)]
     
-    #Comunicación: Ejecutamos las tareas en paralelo y recogemos los resultados
     resultados = pool.map(multiplicar_bloque_matriz, tareas)
 
     pool.close()
     pool.join()
 
-    #Aglomeración: Colocamos los resultados parciales en la matriz resultante C
     C = np.zeros((A.shape[0], B.shape[1])) 
     for fila_inicio, resultado_bloque in resultados:
         C[fila_inicio:fila_inicio+tam_bloque, :] = resultado_bloque 
     return C
 
+def multiplicacion_matriz_secuencial(A, B):
+    return np.dot(A, B)
+
 if __name__ == '__main__':
+    # Generación de matrices grandes
+    A = np.random.randint(-10, 11, (2000, 2000))  
+    B = np.random.randint(-10, 11, (2000, 2000))  
 
-    A = np.random.randint(-10, 11, (2000, 1000))  
-    B = np.random.randint(-10, 11, (1000, 2000)) 
+    # Multiplicación en paralelo
+    start_time_paralelo = time.time()
+    C_paralelo = multiplicacion_matriz_paralela(A, B)
+    end_time_paralelo = time.time()
+    tiempo_paralelo = end_time_paralelo - start_time_paralelo
 
-    C = multiplicacion_matriz_paralela(A, B) 
+    # Multiplicación secuencial
+    start_time_secuencial = time.time()
+    C_secuencial = multiplicacion_matriz_secuencial(A, B)
+    end_time_secuencial = time.time()
+    tiempo_secuencial = end_time_secuencial - start_time_secuencial
 
-    print(C)
+    print(f"Tiempo de ejecución en paralelo: {tiempo_paralelo:.5f} segundos")
+    print(f"Tiempo de ejecución secuencial: {tiempo_secuencial:.5f} segundos")
